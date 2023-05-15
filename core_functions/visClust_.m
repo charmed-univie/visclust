@@ -22,7 +22,7 @@ function [idx,numClustersFound,PIndOut,time,PIndSingleOut,targetvectorSingle,suc
 % Anna Breger and Clemens Karner.
 % University of Vienna, Faculty of Mathematics
 % Vienna, Austria
-% Copyright (c) 2022
+% Copyright (c) 2023
 % https://homepage.univie.ac.at/anna.breger/
 % https://homepage.univie.ac.at/clemens.karner/
 %
@@ -36,7 +36,13 @@ if nargin < 7
 end
 
 %% Normalize data and filter outliers
-outIndices = find(any([DATA < mean(DATA)-4*std(DATA),DATA > mean(DATA)+4*std(DATA)],2))';
+if isstring(P)
+    if P=="tsne2" || P=="tsne3"
+        outIndices = [];
+    end
+else
+    outIndices = find(any([DATA < mean(DATA)-4*std(DATA),DATA > mean(DATA)+4*std(DATA)],2))';
+end
 regularPtsIndices=1:size(DATA,1);
 regularPtsIndices(outIndices)=[];
 OUTLIERS = DATA(outIndices,:);
@@ -55,9 +61,19 @@ PIndSingleOut=0;
 PIndOut = 0;
 targetvectorSingle=-1;
 l=length(NDATA); % number of instances without outliers
-m = length(P); % number of projections
+if isstring(P)
+    if P=="tsne2"
+        m=10;
+        k = 2; % projected dimension
+    elseif P=="tsne3"
+        m=10;
+        k = 3; % projected dimension
+    end
+else
+    m = length(P); % number of projections
+    k = size(P{1},2); % projected dimension
+end
 cl = length(x); % number of clusters
-k = size(P{1},2); % projected dimension
 res = 100; % resolution identifies the number of digits taken into account
 numClustersFound=0;
 wrongClust=0;
@@ -88,7 +104,14 @@ for i = PInd:m
         wrongClust=0;
     end
     %% Project and scale data
-    CDATA = NDATA*P{i};
+    if isstring(P)
+        if P=="tsne2" || P=="tsne3"
+            CDATA=tsne(NDATA,'NumDimensions',k);
+            CDATA=CDATA/max(CDATA(:));
+        end
+    else
+        CDATA = NDATA*P{i};
+    end
     BDATA = round(CDATA*res);
     %% Compute appropriate sigma for Gaussian filter from distances in the projected data set
     if l > 500
@@ -122,24 +145,24 @@ for i = PInd:m
             error("Projection dimension invalid, only integers between 1 and 3 are supported.")
     end
     [M2,n3] = bwlabeln(M1 > mean(M1(:))); % identify connected components
-    
+
     %% Discard regions evolving from outliers
     nc = histcounts(M2,n3+1) >= n^k;
     v = (0:n3);
     cy = nonzeros(v(nc)); % clusters without outliers
     cn = [0,v(~nc)]; % outlier clusters & background
-    
+
     %% Count number of wrong clusters
     if length(cy) > cl
         wrongClust = wrongClust+1;
     elseif length(cy)< cl
         wrongClust = wrongClust-1;
     end
-    
+
     %% Measure time
     if method=="time"
         timeArray(i)=toc;
-    %% Partially assign clusters
+        %% Partially assign clusters
     elseif method=="pvis" || assignTemporaryClusters
         if length(cy) >= 2 || m == 1 % enter when at least two clusters are found or just one projection is provided
             CDATATEMP = num2cell(TDATA,1);
@@ -149,8 +172,9 @@ for i = PInd:m
             output(regularPtsIndices)=outputTemp;
             CDATA=zeros(size(output,1),k);
             CDATA(regularPtsIndices,:)=TDATA;
-            CDATA(outIndices,:)=OUTLIERS*P{i};
-            
+            if ~isstring(P)
+                CDATA(outIndices,:)=OUTLIERS*P{i};
+            end
             if nnz(output) > l/10
                 distr = zeros(cl,1);
                 % nearest neighbor for data points without assignment
@@ -264,8 +288,10 @@ for i = PInd:m
             output(regularPtsIndices)=outputTemp;
             CDATA=zeros(size(output,1),k);
             CDATA(regularPtsIndices,:)=TDATA;
-            CDATA(outIndices,:)=OUTLIERS*P{i};
-            
+            if ~isstring(P)
+                CDATA(outIndices,:)=OUTLIERS*P{i};
+            end
+
             if nnz(output) > l/10 || m==1
                 distr = zeros(cl,1);
                 % nearest neighbor for data points without assignment

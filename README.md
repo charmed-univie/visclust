@@ -2,6 +2,8 @@
 
 This is visClust, a novel clustering algorithm based on theory from mathematical imaging and linear projections.
 
+This repository contains the implementation of [visClust: A visual clustering algorithm based on orthogonal projections](https://arxiv.org/abs/2211.03894), Anna Breger, Clemens Karner, Martin Ehler, 2023.
+
 **Written by Anna Breger and Clemens Karner**\
 University of Vienna, Faculty of Mathematics\
 Vienna, Austria\
@@ -40,9 +42,10 @@ X = iris_dataset'
 
       - 'subsampling'... Number of data points clustered without subsampling. Default: 10000
     
-      - 'projectors'... Projectors to be used for clustering. Choices are:
+      - 'projections'... Projections to be used for clustering. Choices are:
          - 'random'... Random orthogonal projections (default).
          - 'pca'... Projector obtained by Principal Component Analysis.
+         - 'tsne'... Dimension reduction using the t-Distributed Stochastic Neighbor Embedding method.
          - M-by-2 cell... M projectors stored in a M-by-2 cell. The first cell dimension stores the matrices of projections to R^2 (shape Dx2), if available the projections to R^3 are stored in the second dimension (shape Dx3).
 
       - 'method'... Clustering method. Choices are:

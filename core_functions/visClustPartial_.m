@@ -17,7 +17,7 @@ function [idx,PLIST] = visClustPartial_(DATA,x,s,thresh,method,Pinp,targetVector
 % and Clemens Karner.
 % University of Vienna, Faculty of Mathematics
 % Vienna, Austria
-% Copyright (c) 2022
+% Copyright (c) 2023
 % https://homepage.univie.ac.at/anna.breger/
 % https://homepage.univie.ac.at/clemens.karner/
 %
@@ -26,8 +26,14 @@ function [idx,PLIST] = visClustPartial_(DATA,x,s,thresh,method,Pinp,targetVector
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Initialize variables
-iternum_k2=3000;
-iternum_k3=1000;
+if isstring(Pinp) && (Pinp=="tsne2" ||Pinp=="tsne3")
+    iternum_k2=30;
+    iternum_k3=10;
+else
+    iternum_k2=3000;
+    iternum_k3=1000;
+end
+
 PLIST=cell(0,1);
 l=length(DATA);
 cl=length(x);
@@ -55,12 +61,21 @@ if iscell(Pinp)
 elseif Pinp=="random"
     if method(end)=="0"
         scaling=true;
-        P3 = getProj(DATA,3,iternum_k3); 
+        P3 = getProj(DATA,3,iternum_k3);
         smode=2;
     elseif method(end)=="2"
         smode=2;
     elseif method(end)=="3"
         smode=3;
+    end
+elseif Pinp=="tsne"
+    if method(end)=="0"
+        scaling=true;
+        smode=12;
+    elseif method(end)=="2"
+        smode=12;
+    elseif method(end)=="3"
+        smode=13;
     end
 end
 method=method(1:end-1);
@@ -84,6 +99,13 @@ while numClustersFound<cl-1
         projectorIndex=0;
     elseif smode==3
         P = getProj(DATA,3,iternum_k3); % cell array with random projections to R^3
+        projectorIndex=0;
+    elseif smode==12
+        P = "tsne2";
+        P3 = "tsne3";
+        projectorIndex=0;
+    elseif smode==13
+        P = "tsne3";
         projectorIndex=0;
     end
     foundOneEntry=false;
@@ -119,7 +141,9 @@ while numClustersFound<cl-1
                 for iiii=1:size(targetMulti,2)
                     if adjustedRandIndex(targetTemp(:,iii),targetMulti(:,iiii)) > 0.85
                         idx(targetTemp(:,iii)==1)=outIndex;
-                        PLIST{end+1,1}=P{projectorIndex};
+                        if ~isstring(P)
+                            PLIST{end+1,1}=P{projectorIndex};
+                        end
                         outIndex=outIndex+1;
                         foundEntry=true;
                         foundOneEntry=true;
@@ -152,7 +176,9 @@ while numClustersFound<cl-1
         for tempIndex=1:numClustersFoundTemp % iterate through all found clusters and assign classes
             idx(indicesDict(target==tempIndex))=numClustersFound+tempIndex;
         end
-        PLIST{end+1,1}=P{projectorIndex};
+        if ~isstring(P)
+            PLIST{end+1,1}=P{projectorIndex};
+        end
     end
     % increase offset by number of clusters found
     numClustersFound=numClustersFound+numClustersFoundTemp;

@@ -30,16 +30,18 @@ disp("Clustering adjusted Rand index: "+evaluation(prediction, y,"ARI"))
 % 
 % % Modifying 'projectors' parameter
 % % random orthogonal projections, default
-% [prediction, projector]=visclust(X,NumClusters,'projectors','random');
+% [prediction, projector]=visclust(X,NumClusters,'projections','random');
 % % PCA projection
-% [prediction, projector]=visclust(X,NumClusters,'projectors','pca');
+% [prediction, projector]=visclust(X,NumClusters,'projections','pca');
+% % t-SNE dimension reduction
+% [prediction, projector]=visclust(X,NumClusters,'projections','tsne');
 % % custom projectors
 % P2=rand(4,2);
 % P3=rand(4,3);
 % P=cell(1,2);
 % P{1,1}=P2;
 % P{1,2}=P3;
-% [prediction, projector]=visclust(X,NumClusters,'projectors',P);
+% [prediction, projector]=visclust(X,NumClusters,'projections',P);
 % 
 % % Modifying 'method' parameter
 % % all methods, default

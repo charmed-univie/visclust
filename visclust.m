@@ -27,9 +27,11 @@ function [idx,P]= visclust(X,numClusters,varargin)
 %      'subsampling' - Number of data points clustered without subsampling.
 %          Default: 10000
 %
-%      'projectors' - Projectors to be used for clustering. Choices are:
+%      'projections' - Projections to be used for clustering. Choices are:
 %         'random' - Random orthogonal projections (default).
 %         'pca' - Projector obtained by Principal Component Analysis.
+%         'tsne' - Dimension reduction using the t-Distributed Stochastic 
+%          Neighbor Embedding method.
 %          M-by-2 cell - M projectors stored in a M-by-2 cell. The first cell
 %          dimension stores the matrices of projections to R^2 (shape Dx2), if available
 %          the projections to R^3 are stored in the second dimension (shape Dx3).
@@ -56,7 +58,7 @@ function [idx,P]= visclust(X,numClusters,varargin)
 % This is VISCLUST, written by Anna Breger and Clemens Karner
 % University of Vienna, Faculty of Mathematics
 % Vienna, Austria
-% Copyright (c) 2022
+% Copyright (c) 2023
 % https://homepage.univie.ac.at/anna.breger/
 % https://homepage.univie.ac.at/clemens.karner/
 %
@@ -81,8 +83,8 @@ defaultMethod = 'all';
 validMethods = {'all','all2','all3','vis2','vis3','pvis2','pvis3'};
 checkMethod = @(x) any(validatestring(x,validMethods));
 defaultProjector= 'random';
-validProjectors = {'random','pca'};
-checkProjectors = @(x) iscell(x)||any(validatestring(x,validProjectors));
+validProjections = {'random','pca','tsne'};
+checkProjections = @(x) iscell(x)||any(validatestring(x,validProjections));
 defaultDivision= '0';
 defaultImage='false';
 checkSubsampling = @(x) assert(isnumeric(x) && (x >= 0)&& (x <= size(iP.Results.X,1)));
@@ -90,7 +92,7 @@ checkSubsampling = @(x) assert(isnumeric(x) && (x >= 0)&& (x <= size(iP.Results.
 addRequired(iP,'X',@ismatrix);
 addRequired(iP,'numclusters',@isnumeric);
 addParameter(iP,'division',defaultDivision,@ismatrix)
-addParameter(iP,'projectors',defaultProjector,checkProjectors)
+addParameter(iP,'projections',defaultProjector,checkProjections)
 addParameter(iP,'scaling',defaultScaling,@isnumeric)
 addParameter(iP,'subsampling',defaultSubsampling,checkSubsampling)
 addParameter(iP,'thresh',defaultThresh,@isnumeric)
@@ -106,22 +108,27 @@ if (ischar(div)||isstring(div)) && div=="0"
 end
 cl=length(div);
 
-%% Initialize projectors
-if iscell(iP.Results.projectors)
+%% Initialize projections
+if iscell(iP.Results.projections)
     try
-        P2=iP.Results.projectors(:,1); % cell array with projections to R^2
-        if size(iP.Results.projectors,2)==2
-            P3=iP.Results.projectors(:,2); % cell array with projections to R^3
+        P2=iP.Results.projections(:,1); % cell array with projections to R^2
+        if size(iP.Results.projections,2)==2
+            P3=iP.Results.projections(:,2); % cell array with projections to R^3
         end
     catch
         error("invalid projector format")
     end
-elseif iP.Results.projectors=="random"
+elseif iP.Results.projections=="random"
     P2 = getProj(iP.Results.X,2,iternum_k2); % cell array with random projections to R^2
     P3 = getProj(iP.Results.X,3,iternum_k3); % cell array with random projections to R^3
-elseif iP.Results.projectors=="pca"
+elseif iP.Results.projections=="pca"
     P2 = getProj(iP.Results.X,2,"PCA"); % cell array with PCA to R^2
     P3 = getProj(iP.Results.X,3,"PCA"); % cell array with PCA to R^3
+elseif iP.Results.projections=="tsne"
+    P2 = "tsne2";
+    P3 = "tsne3";
+    iternum_k2=10;
+    iternum_k3=10;
 end
 
 %% Split dataset (in case of more than 10 000 data points)
@@ -143,14 +150,14 @@ if iP.Results.method=="all"
     [~,~,~,itertime_k2]=visClust_(DATAA,div,P2,iP.Results.scaling,iP.Results.thresh,"time");
     disp("Starting simultaneous 2D Clustering, worst case runtime: "+num2str(itertime_k2*iternum_k2)+"sec")
     [idx,~,Pi,~,~,tsd,success]=visClust_(DATAA,div,P2,iP.Results.scaling,iP.Results.thresh,"vis");
-    if Pi>0
+    if Pi>0 && isstring(iP.Results.projections) && iP.Results.projections~="tsne"
         P={P2{Pi}};
     else
         P=cell(0,1);
     end
-    if  ((~divset&&~success)||divset)&&(cl>2)&&(iscell(iP.Results.projectors)||iP.Results.projectors~="pca")
+    if  ((~divset&&~success)||divset)&&(cl>2)&&(iscell(iP.Results.projections)||iP.Results.projections~="pca")
         disp("Starting partial 2D Clustering, worst case runtime: "+num2str(itertime_k2*iternum_k2*(cl-1))+"sec")
-        [idxp,Pp]=visClustPartial_(DATAA,div,iP.Results.scaling,iP.Results.thresh,'pvisp0',iP.Results.projectors,tsd);
+        [idxp,Pp]=visClustPartial_(DATAA,div,iP.Results.scaling,iP.Results.thresh,'pvisp0',iP.Results.projections,tsd);
         outputVals=unique(idx);
         distr = zeros(cl,1);
         for iout=1:length(outputVals)
@@ -174,14 +181,14 @@ elseif iP.Results.method=="all2"
     [~,~,~,itertime_k2]=visClust_(DATAA,div,P2,iP.Results.scaling,iP.Results.thresh,"time");
     disp("Starting simultaneous 2D Clustering, worst case runtime: "+num2str(itertime_k2*iternum_k2)+"sec")
     [idx,~,Pi,~,~,tsd,success]=visClust_(DATAA,div,P2,iP.Results.scaling,iP.Results.thresh,"vis");
-    if Pi>0
+    if Pi>0 && isstring(iP.Results.projections)&& iP.Results.projections~="tsne"
         P={P2{Pi}};
     else
         P=cell(0,1);
     end
-    if  ((~divset&&~success)||divset)&&(cl>2)&&(iscell(iP.Results.projectors)||iP.Results.projectors~="pca")
+    if  ((~divset&&~success)||divset)&&(cl>2)&&(iscell(iP.Results.projections)||iP.Results.projections~="pca")
         disp("Starting partial 2D Clustering, worst case runtime: "+num2str(itertime_k2*iternum_k2*(cl-1))+"sec")
-        [idxp,Pp]=visClustPartial_(DATAA,div,iP.Results.scaling,iP.Results.thresh,'pvisp2',iP.Results.projectors,tsd);
+        [idxp,Pp]=visClustPartial_(DATAA,div,iP.Results.scaling,iP.Results.thresh,'pvisp2',iP.Results.projections,tsd);
         outputVals=unique(idx);
         distr = zeros(cl,1);
         for iout=1:length(outputVals)
@@ -204,14 +211,14 @@ elseif iP.Results.method=="all3"
     [~,~,~,itertime_k3]=visClust_(DATAA,div,P3,iP.Results.scaling,iP.Results.thresh,"time");
     disp("Starting simultaneous 3D Clustering, worst case runtime: "+num2str(itertime_k3*iternum_k3)+"sec")
     [idx,~,Pi,~,~,tsd,success]=visClust_(DATAA,div,P3,iP.Results.scaling,iP.Results.thresh,"vis");
-    if Pi>0
+    if Pi>0 && isstring(iP.Results.projections)&& iP.Results.projections~="tsne"
         P={P3{Pi}};
     else
         P=cell(0,1);
     end
-    if  ((~divset&&~success)||divset)&&(cl>2)&&(iscell(iP.Results.projectors)||iP.Results.projectors~="pca")
+    if  ((~divset&&~success)||divset)&&(cl>2)&&(iscell(iP.Results.projections)||iP.Results.projections~="pca")
         disp("Starting partial 3D Clustering, worst case runtime: "+num2str(itertime_k3*iternum_k3*(cl-1))+"sec")
-        [idxp,Pp]=visClustPartial_(DATAA,div,iP.Results.scaling,iP.Results.thresh,'pvis3',iP.Results.projectors,tsd);
+        [idxp,Pp]=visClustPartial_(DATAA,div,iP.Results.scaling,iP.Results.thresh,'pvis3',iP.Results.projections,tsd);
         outputVals=unique(idx);
         distr = zeros(cl,1);
         for iout=1:length(outputVals)
@@ -234,7 +241,7 @@ elseif iP.Results.method=="vis2"
     [~,~,~,itertime_k2]=visClust_(DATAA,div,P2,iP.Results.scaling,iP.Results.thresh,"time");
     disp("Starting simultaneous 2D Clustering, worst case runtime: "+num2str(itertime_k2*iternum_k2)+"sec")
     [idx,~,Pi]=visClust_(DATAA,div,P2,iP.Results.scaling,iP.Results.thresh,"visonly");
-    if Pi>0
+    if Pi>0 && isstring(iP.Results.projections)&& iP.Results.projections~="tsne"
         P={P2{Pi}};
     else
         P=cell(0,1);
@@ -243,7 +250,7 @@ elseif iP.Results.method=="vis3"
     [~,~,~,itertime_k3]=visClust_(DATAA,div,P3,iP.Results.scaling,iP.Results.thresh,"time");
     disp("Starting simultaneous 3D Clustering, worst case runtime: "+num2str(itertime_k3*iternum_k3)+"sec")
     [idx,~,Pi]=visClust_(DATAA,div,P3,iP.Results.scaling,iP.Results.thresh,"visonly");
-    if Pi>0
+    if Pi>0 && isstring(iP.Results.projections)&& iP.Results.projections~="tsne"
         P={P3{Pi}};
     else
         P=cell(0,1);
@@ -251,11 +258,11 @@ elseif iP.Results.method=="vis3"
 elseif iP.Results.method=="pvis2"
     [~,~,~,itertime_k2]=visClust_(DATAA,div,P2,iP.Results.scaling,iP.Results.thresh,"time");
     disp("Starting partial 2D Clustering, worst case runtime: "+num2str(itertime_k2*iternum_k2*(cl-1))+"sec")
-    [idx,P]=visClustPartial_(DATAA,div,iP.Results.scaling,iP.Results.thresh,'pvisp2',iP.Results.projectors);
+    [idx,P]=visClustPartial_(DATAA,div,iP.Results.scaling,iP.Results.thresh,'pvisp2',iP.Results.projections);
 elseif iP.Results.method=="pvis3"
     [~,~,~,itertime_k3]=visClust_(DATAA,div,P2,iP.Results.scaling,iP.Results.thresh,"time");
     disp("Starting partial 3D Clustering, worst case runtime: "+num2str(itertime_k3*iternum_k3*(cl-1))+"sec")
-    [idx,P]=visClustPartial_(DATAA,div,iP.Results.scaling,iP.Results.thresh,'pvis3',iP.Results.projectors);
+    [idx,P]=visClustPartial_(DATAA,div,iP.Results.scaling,iP.Results.thresh,'pvis3',iP.Results.projections);
 end
 
 %% Unify previously split dataset (in case of more than 10 000 data points)

@@ -7,7 +7,7 @@ function value = adjustedRandIndex(vect1,vect2)
 % and Clemens Karner.
 % University of Vienna, Faculty of Mathematics
 % Vienna, Austria
-% Copyright (c) 2022
+% Copyright (c) 2023
 % https://homepage.univie.ac.at/anna.breger/
 % https://homepage.univie.ac.at/clemens.karner/
 %
