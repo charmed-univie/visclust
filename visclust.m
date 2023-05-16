@@ -1,5 +1,10 @@
-function [idx,P]= visclust(X,numClusters,varargin)
+function [idx,P]= visclust(X,varargin)
 % VISCLUST Unsupervised classification via visual clustering
+%
+%   IDX = VISCLUST(X, OPTIONAL) partitions N data points of
+%   dimension D, stored in an N-by-D matrix X. VISCLUST
+%   returns a vector IDX of length N containing the cluster indices of each
+%   data point.
 %
 %   IDX = VISCLUST(X, NUMCLUSTERS, OPTIONAL) partitions N data points of
 %   dimension D, stored in an N-by-D matrix X, into K clusters. VISCLUST
@@ -30,7 +35,7 @@ function [idx,P]= visclust(X,numClusters,varargin)
 %      'projections' - Projections to be used for clustering. Choices are:
 %         'random' - Random orthogonal projections (default).
 %         'pca' - Projector obtained by Principal Component Analysis.
-%         'tsne' - Dimension reduction using the t-Distributed Stochastic 
+%         'tsne' - Dimension reduction using the t-Distributed Stochastic
 %          Neighbor Embedding method.
 %          M-by-2 cell - M projectors stored in a M-by-2 cell. The first cell
 %          dimension stores the matrices of projections to R^2 (shape Dx2), if available
@@ -68,7 +73,6 @@ function [idx,P]= visclust(X,numClusters,varargin)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Add visClust files to path
 addpath("./core_functions/");
-
 %% Initialize variables
 defaultScaling = 1.25;
 defaultThresh=0.1;
@@ -82,6 +86,7 @@ iP = inputParser;
 defaultMethod = 'all';
 validMethods = {'all','all2','all3','vis2','vis3','pvis2','pvis3'};
 checkMethod = @(x) any(validatestring(x,validMethods));
+defaultClusters=-1;
 defaultProjector= 'random';
 validProjections = {'random','pca','tsne'};
 checkProjections = @(x) iscell(x)||any(validatestring(x,validProjections));
@@ -90,7 +95,7 @@ defaultImage='false';
 checkSubsampling = @(x) assert(isnumeric(x) && (x >= 0)&& (x <= size(iP.Results.X,1)));
 % check input values and set default
 addRequired(iP,'X',@ismatrix);
-addRequired(iP,'numclusters',@isnumeric);
+addOptional(iP,'numClusters',defaultClusters,@isnumeric);
 addParameter(iP,'division',defaultDivision,@ismatrix)
 addParameter(iP,'projections',defaultProjector,checkProjections)
 addParameter(iP,'scaling',defaultScaling,@isnumeric)
@@ -98,13 +103,17 @@ addParameter(iP,'subsampling',defaultSubsampling,checkSubsampling)
 addParameter(iP,'thresh',defaultThresh,@isnumeric)
 addParameter(iP,'method',defaultMethod,checkMethod)
 addParameter(iP,'showimg',defaultImage,@(x) (ischar(x)||isstring(x)))
-parse(iP,X,numClusters,varargin{:})
+parse(iP,X,varargin{:})
 % create uniform division if requested
 div=iP.Results.division;
 divset=true;
 if (ischar(div)||isstring(div)) && div=="0"
-    divset=false;
-    div=(ones(iP.Results.numclusters,1)/iP.Results.numclusters)';
+    if iP.Results.numClusters==-1
+        div=-1;
+    else
+        divset=false;
+        div=(ones(iP.Results.numClusters,1)/iP.Results.numClusters)';
+    end
 end
 cl=length(div);
 
@@ -146,11 +155,18 @@ else
 end
 
 %% Start clustering
-if iP.Results.method=="all"
+if iP.Results.numClusters==-1
+    [divcalc,~,~,~,~,~,~]=visClust_(DATAA,div,P2,iP.Results.scaling,iP.Results.thresh,"nodiv");
+    if length(divcalc)==1
+        [idx,P]=visclust(iP.Results.X,divcalc{1},"scaling",iP.Results.scaling,"thresh",iP.Results.thresh,"method",iP.Results.method,"projections",iP.Results.projections);
+    else
+        [idx,P]=visclust(iP.Results.X,divcalc{1},"division",divcalc{2},"scaling",iP.Results.scaling,"thresh",iP.Results.thresh,"method",iP.Results.method,"projections",iP.Results.projections);
+    end
+elseif iP.Results.method=="all"
     [~,~,~,itertime_k2]=visClust_(DATAA,div,P2,iP.Results.scaling,iP.Results.thresh,"time");
     disp("Starting simultaneous 2D Clustering, worst case runtime: "+num2str(itertime_k2*iternum_k2)+"sec")
     [idx,~,Pi,~,~,tsd,success]=visClust_(DATAA,div,P2,iP.Results.scaling,iP.Results.thresh,"vis");
-    if Pi>0 && isstring(iP.Results.projections) && iP.Results.projections~="tsne"
+    if Pi>0 && (ischar(iP.Results.projections)||isstring(iP.Results.projections)) && iP.Results.projections~="tsne"
         P={P2{Pi}};
     else
         P=cell(0,1);
@@ -171,7 +187,7 @@ if iP.Results.method=="all"
         end
         distrp=sort(distrp);
         div=sort(div);
-        
+
         if (~divset&& max(distrp)<1)||(sum(abs(distrp(end-cl+1:end)-div'))<sum(abs(distr(end-cl+1:end)-div')))
             idx=idxp;
             P=Pp;
@@ -181,7 +197,7 @@ elseif iP.Results.method=="all2"
     [~,~,~,itertime_k2]=visClust_(DATAA,div,P2,iP.Results.scaling,iP.Results.thresh,"time");
     disp("Starting simultaneous 2D Clustering, worst case runtime: "+num2str(itertime_k2*iternum_k2)+"sec")
     [idx,~,Pi,~,~,tsd,success]=visClust_(DATAA,div,P2,iP.Results.scaling,iP.Results.thresh,"vis");
-    if Pi>0 && isstring(iP.Results.projections)&& iP.Results.projections~="tsne"
+    if Pi>0 && (ischar(iP.Results.projections)||isstring(iP.Results.projections))&& iP.Results.projections~="tsne"
         P={P2{Pi}};
     else
         P=cell(0,1);
@@ -211,7 +227,7 @@ elseif iP.Results.method=="all3"
     [~,~,~,itertime_k3]=visClust_(DATAA,div,P3,iP.Results.scaling,iP.Results.thresh,"time");
     disp("Starting simultaneous 3D Clustering, worst case runtime: "+num2str(itertime_k3*iternum_k3)+"sec")
     [idx,~,Pi,~,~,tsd,success]=visClust_(DATAA,div,P3,iP.Results.scaling,iP.Results.thresh,"vis");
-    if Pi>0 && isstring(iP.Results.projections)&& iP.Results.projections~="tsne"
+    if Pi>0 &&(ischar(iP.Results.projections)||isstring(iP.Results.projections))&& iP.Results.projections~="tsne"
         P={P3{Pi}};
     else
         P=cell(0,1);
@@ -241,7 +257,7 @@ elseif iP.Results.method=="vis2"
     [~,~,~,itertime_k2]=visClust_(DATAA,div,P2,iP.Results.scaling,iP.Results.thresh,"time");
     disp("Starting simultaneous 2D Clustering, worst case runtime: "+num2str(itertime_k2*iternum_k2)+"sec")
     [idx,~,Pi]=visClust_(DATAA,div,P2,iP.Results.scaling,iP.Results.thresh,"visonly");
-    if Pi>0 && isstring(iP.Results.projections)&& iP.Results.projections~="tsne"
+    if Pi>0 && (ischar(iP.Results.projections)||isstring(iP.Results.projections))&& iP.Results.projections~="tsne"
         P={P2{Pi}};
     else
         P=cell(0,1);
@@ -250,7 +266,7 @@ elseif iP.Results.method=="vis3"
     [~,~,~,itertime_k3]=visClust_(DATAA,div,P3,iP.Results.scaling,iP.Results.thresh,"time");
     disp("Starting simultaneous 3D Clustering, worst case runtime: "+num2str(itertime_k3*iternum_k3)+"sec")
     [idx,~,Pi]=visClust_(DATAA,div,P3,iP.Results.scaling,iP.Results.thresh,"visonly");
-    if Pi>0 && isstring(iP.Results.projections)&& iP.Results.projections~="tsne"
+    if Pi>0 && (ischar(iP.Results.projections)||isstring(iP.Results.projections))&& iP.Results.projections~="tsne"
         P={P3{Pi}};
     else
         P=cell(0,1);
@@ -270,7 +286,7 @@ if iP.Results.subsampling < l
     idxComplete=zeros(l,1);
     idxComplete(dicta)=idx;
     idxComplete(dicti)=idx(knnsearch(DATAA,DATAI));
-    
+
     idx=idxComplete;
     targetvectorVals=unique(idx);
     for iout=1:length(targetvectorVals)
@@ -285,9 +301,9 @@ if size(P,1)>0 && iP.Results.showimg~="false"
     for i=1:length(numclust)
         tdata=iP.Results.X(idx==numclust(i),:);
         if size(P{1,1},2)==2
-            scatter(tdata*P2{Pi}(:,1),tdata*P2{Pi}(:,2),"*");
+            scatter(tdata*P{1}(:,1),tdata*P{1}(:,2),"*");
         elseif size(P{1,1},2)==3
-            scatter3(tdata*P3{Pi}(:,1),tdata*P3{Pi}(:,2),tdata*P3{Pi}(:,3),"*");
+            scatter3(tdata*P{1}(:,1),tdata*P{1}(:,2),tdata*P{1}(:,3),"*");
         end
         hold on;
     end

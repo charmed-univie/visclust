@@ -85,6 +85,9 @@ if method=="time" % measuring expected time of visClust
     m=min(10,size(P,1));
 elseif method =="vis" % actual clustering
     assignTemporaryClusters=true; % recycle clusters from visClust
+elseif method=="nodiv"
+    m=500;
+    distrlist={};
 end
 
 %% Iterate over all projections until clusters are found
@@ -94,7 +97,7 @@ for i = PInd:m
     end
     %% Iterative adaption of scaling factor
     wrongClustIter=wrongClustIter+1;
-    if wrongClustIter == 250
+    if wrongClustIter == 250 && method~="nodiv"
         if wrongClust >200
             s=s*1.25;
         elseif wrongClust < -200
@@ -279,8 +282,8 @@ for i = PInd:m
         end
     end
     %% Simultaneously assign clusters
-    if method == "vis" || method =="visonly"
-        if length(cy) == cl || m == 1 % enter when correct number of clusters is found or just one projection is provided
+    if method == "vis" || method =="visonly" || method=="nodiv"
+        if length(cy) == cl || m == 1 || method=="nodiv" % enter when correct number of clusters is found or just one projection is provided
             CDATATEMP = num2cell(TDATA,1);
             outputTemp = M2(sub2ind(size(M2),CDATATEMP{:}));
             % combine data with outliers
@@ -346,7 +349,9 @@ for i = PInd:m
                     distr(iout)=sum(outputTemp==outputVals(iout))/l;
                     output(outputTemp==outputVals(iout))=iout;
                 end
-                if m==1 % if only one projector is provided assign classes and terminate
+                if  method=="nodiv"
+                    distrlist{end+1}=sort(distr);
+                elseif m==1 % if only one projector is provided assign classes and terminate
                     numClustersFound=1;
                     PIndOut=i;
                     idx=output;
@@ -377,7 +382,27 @@ if method=="time"
         time=timeArray(1:m);
     end
 end
-if PIndOut == 0
+if method=="nodiv"
+    lengthlist=[];
+    for li=1:m
+        lengthlist(end+1)=length(distrlist{li});
+    end
+    optlength=mode(lengthlist);
+    distroptlist={};
+    for li=1:m
+        if length(distrlist{li})==optlength
+           distroptlist{end+1}=distrlist{li};
+        end
+    end
+    distroptlist=cell2mat(distroptlist);
+    [N,edges] =histcounts(distroptlist,100);
+    [~,ind]=maxk(N,optlength);
+    if sum(N(ind))/length(distroptlist)>0.8
+        idx={optlength,edges(ind)/sum(edges(ind))};
+    else
+        idx={optlength};
+    end
+elseif PIndOut == 0
     idx=zeros(l+size(OUTLIERS,1),1);
 end
 end

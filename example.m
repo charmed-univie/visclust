@@ -13,6 +13,9 @@ disp("Clustering Rand index: "+evaluation(prediction, y,"RI"))
 disp("Clustering adjusted Rand index: "+evaluation(prediction, y,"ARI"))
 
 % % Optional parameter configurations
+% % Clustering without division or number of clusters
+% [prediction, projector]=visclust(X);
+%
 % % Modifying 'division' parameter
 % % uniform division, default
 % [prediction, projector]=visclust(X,NumClusters,'division','0');
