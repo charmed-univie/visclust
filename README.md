@@ -26,7 +26,7 @@ X = iris_dataset'
 ```
 
 **VisClust** Unsupervised classification via visual clustering
-   - IDX = **visclust**(X, OPTIONAL) partitions N data points of dimension D, stored in an N-by-D matrix X. VISCLUST returns a vector IDX of length N containing the cluster indices of each data point.
+   - IDX = VISCLUST(X, OPTIONAL) returns a suggested number of clusters for N data points of dimension D, stored in an N-by-D matrix X.
 
    - IDX = **visclust**(X, NUMCLUSTERS, OPTIONAL) partitions N data points of dimension D, stored in an N-by-D matrix X, into K clusters. VISCLUST returns a vector IDX of length N containing the cluster indices of each data point.
 

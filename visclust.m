@@ -1,10 +1,8 @@
 function [idx,P]= visclust(X,varargin)
 % VISCLUST Unsupervised classification via visual clustering
 %
-%   IDX = VISCLUST(X, OPTIONAL) partitions N data points of
-%   dimension D, stored in an N-by-D matrix X. VISCLUST
-%   returns a vector IDX of length N containing the cluster indices of each
-%   data point.
+%   IDX = VISCLUST(X, OPTIONAL) returns a suggested number of clusters for
+%   N data points of dimension D, stored in an N-by-D matrix X.
 %
 %   IDX = VISCLUST(X, NUMCLUSTERS, OPTIONAL) partitions N data points of
 %   dimension D, stored in an N-by-D matrix X, into K clusters. VISCLUST
@@ -156,12 +154,9 @@ end
 
 %% Start clustering
 if iP.Results.numClusters==-1
-    [divcalc,~,~,~,~,~,~]=visClust_(DATAA,div,P2,iP.Results.scaling,iP.Results.thresh,"nodiv");
-    if length(divcalc)==1
-        [idx,P]=visclust(iP.Results.X,divcalc{1},"scaling",iP.Results.scaling,"thresh",iP.Results.thresh,"method",iP.Results.method,"projections",iP.Results.projections);
-    else
-        [idx,P]=visclust(iP.Results.X,divcalc{1},"division",divcalc{2},"scaling",iP.Results.scaling,"thresh",iP.Results.thresh,"method",iP.Results.method,"projections",iP.Results.projections);
-    end
+    [predNumClusters,~,~,~,~,~,~]=visClust_(DATAA,div,P2,iP.Results.scaling,iP.Results.thresh,"nodiv");
+    P=cell(0,1);
+    idx=predNumClusters{1};
 elseif iP.Results.method=="all"
     [~,~,~,itertime_k2]=visClust_(DATAA,div,P2,iP.Results.scaling,iP.Results.thresh,"time");
     disp("Starting simultaneous 2D Clustering, worst case runtime: "+num2str(itertime_k2*iternum_k2)+"sec")
