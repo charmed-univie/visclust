@@ -15,6 +15,21 @@ This software is licensed under the MIT license, see the file 'LICENSE'.
 For all questions, bugs and suggestions please email
 clemens.karner@univie.ac.at or anna.breger@univie.ac.at
 
+If you use this visClust implementation, please cite the paper:
+```
+@article{BREGER2024110136,
+title = {visClust: A visual clustering algorithm based on orthogonal projections},
+journal = {Pattern Recognition},
+volume = {148},
+pages = {110136},
+year = {2024},
+issn = {0031-3203},
+doi = {https://doi.org/10.1016/j.patcog.2023.110136},
+url = {https://www.sciencedirect.com/science/article/pii/S0031320323008336},
+author = {Anna Breger and Clemens Karner and Martin Ehler}
+}
+```
+
 # Usage instructions
 
 The file 'example.m' contains all possible parameter configurations applied to the Iris dataset.
